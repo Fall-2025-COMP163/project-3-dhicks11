@@ -2,7 +2,7 @@
 COMP 163 - Project 3: Quest Chronicles
 Character Manager Module - Starter Code
 
-Name: [Your Name Here]
+Name: Daylen Hicks
 
 AI Usage: [Document any AI assistance used]
 
@@ -41,13 +41,46 @@ def create_character(name, character_class):
     # Mage: health=80, strength=8, magic=20
     # Rogue: health=90, strength=12, magic=10
     # Cleric: health=100, strength=10, magic=15
-    
     # All characters start with:
     # - level=1, experience=0, gold=100
     # - inventory=[], active_quests=[], completed_quests=[]
     
+    VALID_CLASSES = ["Warrior", "Mage", "Rogue", "Cleric"]
     # Raise InvalidCharacterClassError if class not in valid list
-    pass
+    if character_class.capitalize() not in VALID_CLASSES:
+        
+        raise InvalidCharacterClassError(
+            f"Invalid class '{character_class}'. "
+            f"Valid classes are: {', '.join(VALID_CLASSES)}"
+        )
+    
+    
+    character = {
+        "name": name,
+        "class": character_class.capitalize(),
+        "level": 1,
+        "experience": 0,
+        "gold": 100,
+        "inventory": [],
+        "active_quests": [],
+        "completed_quests": []
+    }
+    
+    # 4. Class-specific stats
+    if character_class.capitalize() == "Warrior":
+        class_stats = {"health": 120, "max_health": 120, "strength": 15, "magic": 5}
+    elif character_class.capitalize() == "Mage":
+        class_stats = {"health": 80, "max_health": 80, "strength": 8, "magic": 20}
+    elif character_class.capitalize() == "Rogue":
+        class_stats = {"health": 90, "max_health": 90, "strength": 12, "magic": 10}
+    elif character_class.capitalize() == "Cleric":
+        class_stats = {"health": 100, "max_health": 100, "strength": 10, "magic": 15}
+    
+    # Update the base dictionary with the class-specific stats
+    character.update(class_stats)
+    
+    # 5. Return the complete character
+    return character
 
 def save_character(character, save_directory="data/save_games"):
     """
@@ -75,8 +108,41 @@ def save_character(character, save_directory="data/save_games"):
     # TODO: Implement save functionality
     # Create save_directory if it doesn't exist
     # Handle any file I/O errors appropriately
-    # Lists should be saved as comma-separated values
-    pass
+# Lists should be saved as comma-separated values
+    try:
+        # 1. Ensure the save directory exists
+        os.makedirs(save_directory, exist_ok=True)
+        
+        # 2. Define the full path for the save file
+        filename = f"{character['name']}_save.txt"
+        filepath = os.path.join(save_directory, filename)
+        
+        # 3. Use 'with' to auto-manage the file
+        with open(filepath, 'w') as f:
+            f.write(f"NAME: {character['name']}\n")
+            f.write(f"CLASS: {character['class']}\n")
+            f.write(f"LEVEL: {character['level']}\n")
+            f.write(f"HEALTH: {character['health']}\n")
+            f.write(f"MAX_HEALTH: {character['max_health']}\n")
+            f.write(f"STRENGTH: {character['strength']}\n")
+            f.write(f"MAGIC: {character['magic']}\n")
+            f.write(f"EXPERIENCE: {character['experience']}\n")
+            f.write(f"GOLD: {character['gold']}\n")
+            
+            # 4. Convert lists to comma-separated strings
+            f.write(f"INVENTORY: {','.join(character['inventory'])}\n")
+            f.write(f"ACTIVE_QUESTS: {','.join(character['active_quests'])}\n")
+            f.write(f"COMPLETED_QUESTS: {','.join(character['completed_quests'])}\n")
+            
+        return True
+    
+    except IOError as e:
+        # Handle file-related errors 
+        print(f"Error saving character {character['name']}: {e}")
+        raise  # Re-raise the exception so the caller knows it failed
+    except KeyError as e:
+        print(f"Error saving: character dictionary is missing key {e}")
+        raise InvalidSaveDataError(f"Character data is missing key: {e}")
 
 def load_character(character_name, save_directory="data/save_games"):
     """
