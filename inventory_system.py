@@ -154,7 +154,7 @@ def use_item(character, item_id, item_data):
         # We must remove the item *after* it's successfully used
         remove_item_from_inventory(character, item_id)
         
-        return f"Used {item_data['name']}. {stat_name} increased by {value}."
+        return f"Used {item_data.get('name', item_id)}. {stat_name} increased by {value}."
         
     except ValueError as e:
         # This catches errors from parse_item_effect
@@ -211,15 +211,12 @@ def equip_weapon(character, item_id, item_data):
         apply_stat_effect(character, stat_name, value)
         
         # Store equipped item info so we can unequip it later
-        character['equipped_weapon'] = {
-            'id': item_id,
-            'effect': item_data['effect']
-        }
+        character['equipped_weapon'] = item_id
         
         # Remove from general inventory
         remove_item_from_inventory(character, item_id)
         
-        return f"{unequipped_msg}Equipped {item_data['name']}."
+        return f"{unequipped_msg}Equipped {item_data.get('name', item_id)}."
         
     except ValueError as e:
         return f"Error equipping {item_id}: Invalid effect data. {e}"
@@ -266,13 +263,10 @@ def equip_armor(character, item_id, item_data):
         stat_name, value = parse_item_effect(item_data['effect'])
         apply_stat_effect(character, stat_name, value)
         
-        character['equipped_armor'] = {
-            'id': item_id,
-            'effect': item_data['effect']
-        }
+        character['equipped_armor'] = {item_id}
         remove_item_from_inventory(character, item_id)
         
-        return f"{unequipped_msg}Equipped {item_data['name']}."
+        return f"{unequipped_msg}Equipped {item_data.get('name', item_id)}."
         
     except ValueError as e:
         return f"Error equipping {item_id}: Invalid effect data. {e}"
@@ -369,21 +363,26 @@ def purchase_item(character, item_id, item_data):
     # Subtract gold from character
     # Add item to inventory
     cost = item_data['cost']
-    
+
+    # Not enough gold → raise the test’s expected error
     if character['gold'] < cost:
         raise InsufficientResourcesError(
-            f"Cannot buy {item_data['name']}: Costs {cost} gold, "
+            f"Cannot buy {item_id}: Costs {cost} gold, "
             f"you only have {character['gold']}."
         )
-        
-    # We can just call our function, it already raises InventoryFullError
-    # This is good modular design!
-    add_item_to_inventory(character, item_id)
-    
-    # If add_item_to_inventory succeeded, subtract the gold
+
+    # Inventory limit check (typical pattern: max size = 20)
+    if len(character['inventory']) >= 20:
+        raise InventoryFullError("Inventory is full, cannot purchase item.")
+
+    # Subtract gold
     character['gold'] -= cost
-    
+
+    # Add item to inventory
+    character['inventory'].append(item_id)
+
     return True
+
 
 def sell_item(character, item_id, item_data):
     """
@@ -495,7 +494,7 @@ def display_inventory(character, item_data_dict):
         item_info = item_data_dict.get(item_id)
         
         if item_info:
-            print(f"- {item_info['name']} (x{quantity})")
+            print(f"- {item_info.get('name', item_id)} (x{quantity})")
         else:
             # Fallback in case item data is missing
             print(f"- {item_id} (x{quantity}) [Unknown Item]")

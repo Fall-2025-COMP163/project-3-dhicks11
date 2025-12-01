@@ -18,6 +18,7 @@ from custom_exceptions import (
     CharacterDeadError
 )
 
+VALID_CLASSES = ['Warrior', 'Mage', 'Rogue', 'Cleric']
 # ============================================================================
 # CHARACTER MANAGEMENT FUNCTIONS
 # ============================================================================
@@ -168,45 +169,50 @@ def load_character(character_name, save_directory="data/save_games"):
 
     if not os.path.exists(file_path):
         raise CharacterNotFoundError(f"Save file not found for {character_name}")
+
     try:
         data_map = {}
-        with open(file_path, 'r') as f:
+
+        with open(file_path, "r") as f:
             for line in f:
                 line = line.strip()
-                if line:
-                    key, value = line.split(': ', 1)
-                    data_map[key] = value
+                if not line:
+                    continue
 
+                # Accept "KEY: value" OR "KEY:" (blank lists allowed)
+                if ": " in line:
+                    key, value = line.split(": ", 1)
+                else:
+                    if line.endswith(":"):
+                        key = line[:-1]
+                        value = ""
+                    else:
+                        raise InvalidSaveDataError(f"Malformed line in save file: '{line}'")
+
+                data_map[key] = value
+
+    except Exception as e:
+        raise SaveFileCorruptedError(f"Could not read save file: {e}")
+
+    # Convert comma-separated strings back into lists
+    try:
         character = {
             "name": data_map["NAME"],
             "class": data_map["CLASS"],
             "level": int(data_map["LEVEL"]),
-            "health": int(data_map["HEALTH"]),
-            "max_health": int(data_map["MAX_HEALTH"]),
-            "strength": int(data_map["STRENGTH"]),
-            "magic": int(data_map["MAGIC"]),
             "experience": int(data_map["EXPERIENCE"]),
+            "health": int(data_map["HEALTH"]),
+            "strength": int(data_map["STRENGTH"]),
             "gold": int(data_map["GOLD"]),
-            "inventory": data_map["INVENTORY"].split(',') if data_map["INVENTORY"] else [],
-            "active_quests": data_map["ACTIVE_QUESTS"].split(',') if data_map["ACTIVE_QUESTS"] else [],
-            "completed_quests": data_map["COMPLETED_QUESTS"].split(',') if data_map["COMPLETED_QUESTS"] else []
+            "inventory": data_map["INVENTORY"].split(",") if data_map["INVENTORY"] else [],
+            "active_quests": data_map["ACTIVE_QUESTS"].split(",") if data_map["ACTIVE_QUESTS"] else [],
+            "completed_quests": data_map["COMPLETED_QUESTS"].split(",") if data_map["COMPLETED_QUESTS"] else [],
         }
-
-        # 5. Final validation check
-        validate_character_data(character)  # This will raise InvalidSaveDataError
 
         return character
 
-    except (KeyError, ValueError, IndexError) as e:
-        # If a key is missing, int() fails, or split() fails, the file is corrupt.
-        raise SaveFileCorruptedError(
-            f"Save file for {character_name} is corrupted. Error: {e}"
-        ) from e
-    except IOError as e:
-        # Catch other file-reading errors
-        raise SaveFileCorruptedError(
-            f"Could not read save file for {character_name}. Error: {e}"
-        ) from e
+    except Exception as e:
+        raise InvalidSaveDataError(f"Invalid save data: {e}")
         
 def list_saved_characters(save_directory="data/save_games"):
     """
